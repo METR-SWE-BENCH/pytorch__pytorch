@@ -763,6 +763,18 @@ def homebrew_libomp() -> Tuple[bool, str]:
         return False, ""
 
 
+@functools.lru_cache(None)
+def perload_clang_libomp_win(cpp_compiler: str, omp_name: str) -> None:
+    output = subprocess.check_output([cpp_compiler, "-print-file-name=bin"]).decode(
+        "utf8"
+    )
+    omp_path = os.path.join(output, omp_name)
+    from ctypes import cdll
+
+    print("omp_path: ", omp_path)
+    omp_module = cdll.LoadLibrary(omp_path)
+
+
 def _get_openmp_args(
     cpp_compiler: str,
 ) -> Tuple[List[str], List[str], List[str], List[str], List[str], List[str]]:
@@ -822,6 +834,8 @@ def _get_openmp_args(
         if _is_clang(cpp_compiler):
             print("It is clang-cl.")
             cflags.append("openmp")
+            libs.append("libomp")
+            perload_clang_libomp_win(cpp_compiler, "libomp.dll")
         else:
             # /openmp, /openmp:llvm
             # llvm on Windows, new openmp: https://devblogs.microsoft.com/cppblog/msvc-openmp-update/
