@@ -158,6 +158,8 @@ def _is_clang(cpp_compiler: str) -> bool:
     # Mac OS apple clang maybe named as gcc, need check compiler info.
     if sys.platform == "darwin":
         return _is_apple_clang(cpp_compiler)
+    elif _IS_WINDOWS:
+        return bool(re.search(r"(clang-cl|clang\+\+)", cpp_compiler))
     return bool(re.search(r"(clang|clang\+\+)", cpp_compiler))
 
 
@@ -817,11 +819,15 @@ def _get_openmp_args(
         # if openmp is still not available, we let the compiler to have a try,
         # and raise error together with instructions at compilation error later
     elif _IS_WINDOWS:
-        # /openmp, /openmp:llvm
-        # llvm on Windows, new openmp: https://devblogs.microsoft.com/cppblog/msvc-openmp-update/
-        # msvc openmp: https://learn.microsoft.com/zh-cn/cpp/build/reference/openmp-enable-openmp-2-0-support?view=msvc-170
-        cflags.append("openmp")
-        cflags.append("openmp:experimental")  # MSVC CL
+        if _is_msvc_cl(cpp_compiler):
+            # /openmp, /openmp:llvm
+            # llvm on Windows, new openmp: https://devblogs.microsoft.com/cppblog/msvc-openmp-update/
+            # msvc openmp: https://learn.microsoft.com/zh-cn/cpp/build/reference/openmp-enable-openmp-2-0-support?view=msvc-170
+            cflags.append("openmp")
+            cflags.append("openmp:experimental")  # MSVC CL
+        elif _is_clang(cpp_compiler):
+            print("It is clang-cl.")
+            cflags.append("openmp")
     else:
         if config.is_fbcode():
             include_dir_paths.append(build_paths.openmp())
