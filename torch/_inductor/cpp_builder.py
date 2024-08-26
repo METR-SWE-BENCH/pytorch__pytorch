@@ -15,6 +15,7 @@ import subprocess
 import sys
 import sysconfig
 import warnings
+from ctypes import CDLL, cdll
 from pathlib import Path
 from typing import Any, List, Optional, Sequence, Tuple, Union
 
@@ -764,15 +765,14 @@ def homebrew_libomp() -> Tuple[bool, str]:
 
 
 @functools.lru_cache(None)
-def perload_clang_libomp_win(cpp_compiler: str, omp_name: str) -> None:
+def perload_clang_libomp_win(cpp_compiler: str, omp_name: str) -> CDLL:
     output = subprocess.check_output([cpp_compiler, "-print-file-name=bin"]).decode(
         "utf8"
     )
-    omp_path = os.path.join(output, omp_name)
-    from ctypes import cdll
-
-    print("omp_path: ", omp_path)
+    omp_path = os.path.join(output.rstrip(), omp_name)
+    os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
     omp_module = cdll.LoadLibrary(omp_path)
+    return omp_module
 
 
 def _get_openmp_args(
@@ -832,7 +832,6 @@ def _get_openmp_args(
         # and raise error together with instructions at compilation error later
     elif _IS_WINDOWS:
         if _is_clang(cpp_compiler):
-            print("It is clang-cl.")
             cflags.append("openmp")
             libs.append("libomp")
             perload_clang_libomp_win(cpp_compiler, "libomp.dll")
